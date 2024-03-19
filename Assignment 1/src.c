@@ -54,9 +54,9 @@ int main(int argc, char* argv[]){
 
         int num_elements = side_len; // Number of elements to pack
         
-        int stime = MPI_Wtime();
-
         double** temp = (double**)malloc(side_len*sizeof(double*));
+
+        double stime = MPI_Wtime();
 
         for(int t=0; t<time_steps; t++){
             // Pack for the columns and send for the rows directly
@@ -187,7 +187,15 @@ int main(int argc, char* argv[]){
             final = temp;
 
         }
-    
+
+        double etime = MPI_Wtime();
+        double time = etime - stime;
+        double max_time;
+        MPI_Reduce(&time, &max_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+        if(my_rank==0){
+            printf("Max time: %lf\n", max_time);
+        }
+
     }
     else if(stencil==9){
 
