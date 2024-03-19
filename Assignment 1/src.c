@@ -136,8 +136,6 @@ int main(int argc, char* argv[]){
                 }
                 MPI_Send(left_send, side_len*8, MPI_PACKED, my_rank-1, my_rank-1, MPI_COMM_WORLD);
             }
-            
-            
 
             // Intra-Columns NN-2
             int col_rank = my_rank/Px;
@@ -198,6 +196,208 @@ int main(int argc, char* argv[]){
 
     }
     else if(stencil==9){
+
+        double up_recv[2*side_len], down_recv[2*side_len], left_recv[2*side_len], right_recv[2*side_len];  // Received from up, down, left, right
+        double left_send[2*side_len], right_send[2*side_len];  // Sent to up, down, left, right
+
+        int num_elements = side_len; // Number of elements to pack
+        
+        double** temp = (double**)malloc(side_len*sizeof(double*));
+
+        double stime = MPI_Wtime();
+
+        for(int t=0; t<time_steps; t++){
+            // Pack for the columns and send for the rows directly
+            
+            for(int i=0; i<side_len; ++i){
+                for(int j=0; j<side_len; ++j){
+                    final[i][j] = 0;
+                    if(i){
+                        final[i][j] += data[i-1][j];
+                    }
+                    if(i<side_len-1){
+                        final[i][j] += data[i+1][j];
+                    }
+                    if(j){
+                        final[i][j] += data[i][j-1];
+                    }
+                    if(j<side_len-1){
+                        final[i][j] += data[i][j+1];
+                    }
+                    if(i>1){
+                        final[i][j] += data[i-2][j];
+                    }
+                    if(i<side_len-2){
+                        final[i][j] += data[i+2][j];
+                    }
+                    if(j>1){
+                        final[i][j] += data[i][j-2];
+                    }
+                    if(j<side_len-2){
+                        final[i][j] += data[i][j+2];
+                    }
+                }
+            }
+
+            int position;
+            position = 0;
+            for(int i = 0; i < side_len; i++){
+                    MPI_Pack(&data[i][0], 1, MPI_DOUBLE, left_send, side_len*8, &position, MPI_COMM_WORLD);
+            }
+            for(int i = 0; i < side_len; i++){
+                    MPI_Pack(&data[i][1], 1, MPI_DOUBLE, left_send, side_len*8, &position, MPI_COMM_WORLD);
+            }
+            position = 0;
+            for(int i = 0; i < side_len; i++){
+                    MPI_Pack(&data[i][side_len-1], 1, MPI_DOUBLE, right_send, side_len*8, &position, MPI_COMM_WORLD);
+            }
+            for(int i = 0; i < side_len; i++){
+                    MPI_Pack(&data[i][side_len-2], 1, MPI_DOUBLE, right_send, side_len*8, &position, MPI_COMM_WORLD);
+            }
+            // printf("%d %d Pack done\n", my_rank, side_len);
+
+            // Send using NN-2 first for all rows, then for all columns
+
+            // Intra-Rows NN-2
+            if(my_rank%2==0 && (my_rank+1)%Px!=0){  // Right send/recv
+                MPI_Send(right_send, 2*side_len*8, MPI_PACKED, my_rank+1, my_rank+1, MPI_COMM_WORLD);
+                MPI_Recv(right_recv, 2*side_len*8, MPI_PACKED, my_rank+1, my_rank, MPI_COMM_WORLD, &status);
+                position = 0;
+                double temp;
+                for(int i=0; i<side_len; i++){
+                    MPI_Unpack(right_recv, side_len*8, &position, &temp, 1, MPI_DOUBLE, MPI_COMM_WORLD);
+                    final[i][side_len-1] += temp;
+                    final[i][side_len-2] += temp;
+                }
+                for(int i=0; i<side_len; i++){
+                    MPI_Unpack(right_recv, side_len*8, &position, &temp, 1, MPI_DOUBLE, MPI_COMM_WORLD);
+                    final[i][side_len-1] += temp;
+                }
+            }
+            else if(my_rank%2!=0 && (my_rank)%Px>0){  // Left send/recv
+            
+                MPI_Recv(left_recv, 2*side_len*8, MPI_PACKED, my_rank-1, my_rank, MPI_COMM_WORLD, &status);
+                position = 0;
+                double temp;
+                for(int i=0; i<side_len; i++){
+                    MPI_Unpack(right_recv, side_len*8, &position, &temp, 1, MPI_DOUBLE, MPI_COMM_WORLD);
+                    final[i][0] += temp;
+                    final[i][1] += temp;
+                }
+                for(int i=0; i<side_len; i++){
+                    MPI_Unpack(right_recv, side_len*8, &position, &temp, 1, MPI_DOUBLE, MPI_COMM_WORLD);
+                    final[i][0] += temp;
+                }
+                MPI_Send(left_send, 2*side_len*8, MPI_PACKED, my_rank-1, my_rank-1, MPI_COMM_WORLD);
+            }
+
+            if(my_rank%2!=0 && (my_rank+1)%Px!=0){  // Right send/recv
+                MPI_Send(right_send, 2*side_len*8, MPI_PACKED, my_rank+1, my_rank+1, MPI_COMM_WORLD);
+                MPI_Recv(right_recv, 2*side_len*8, MPI_PACKED, my_rank+1, my_rank, MPI_COMM_WORLD, &status);
+                position = 0;
+                double temp;
+                for(int i=0; i<side_len; i++){
+                    MPI_Unpack(right_recv, side_len*8, &position, &temp, 1, MPI_DOUBLE, MPI_COMM_WORLD);
+                    final[i][side_len-1] += temp;
+                    final[i][side_len-2] += temp;
+                }
+                for(int i=0; i<side_len; i++){
+                    MPI_Unpack(right_recv, side_len*8, &position, &temp, 1, MPI_DOUBLE, MPI_COMM_WORLD);
+                    final[i][side_len-1] += temp;
+                }
+            }
+            else if(my_rank%2==0 && (my_rank)%Px!=0){  // Left send/recv
+                MPI_Recv(left_recv, 2*side_len*8, MPI_PACKED, my_rank-1, my_rank, MPI_COMM_WORLD, &status);
+                position = 0;
+                double temp;
+                for(int i=0; i<side_len; i++){
+                    MPI_Unpack(right_recv, side_len*8, &position, &temp, 1, MPI_DOUBLE, MPI_COMM_WORLD);
+                    final[i][0] += temp;
+                    final[i][1] += temp;
+                }
+                for(int i=0; i<side_len; i++){
+                    MPI_Unpack(right_recv, side_len*8, &position, &temp, 1, MPI_DOUBLE, MPI_COMM_WORLD);
+                    final[i][0] += temp;
+                }
+                MPI_Send(left_send, 2*side_len*8, MPI_PACKED, my_rank-1, my_rank-1, MPI_COMM_WORLD);
+            }
+
+            // Intra-Columns NN-2
+            int col_rank = my_rank/Px;
+            if(col_rank%2==0 && col_rank<Py-1){  // Down send/recv
+                MPI_Send(data[side_len-2], 2*side_len, MPI_DOUBLE, my_rank+Px, my_rank+Px, MPI_COMM_WORLD);
+                MPI_Recv(down_recv, 2*side_len, MPI_DOUBLE, my_rank+Px, my_rank, MPI_COMM_WORLD, &status);
+                position = 0;
+                double temp;
+                for(int i=0; i<side_len; i++){
+                    MPI_Unpack(right_recv, side_len*8, &position, &temp, 1, MPI_DOUBLE, MPI_COMM_WORLD);
+                    final[side_len-1][i] += temp;
+                    final[side_len-2][i] += temp;
+                }
+                for(int i=0; i<side_len; i++){
+                    MPI_Unpack(right_recv, side_len*8, &position, &temp, 1, MPI_DOUBLE, MPI_COMM_WORLD);
+                    final[side_len-1][i] += temp;
+                }
+            }
+            else if(col_rank%2!=0 && col_rank>0){  // Up send/recv
+                MPI_Recv(up_recv, 2*side_len, MPI_DOUBLE, my_rank-Px, my_rank, MPI_COMM_WORLD, &status);
+                position = 0;
+                double temp;
+                for(int i=0; i<side_len; i++){
+                    MPI_Unpack(right_recv, side_len*8, &position, &temp, 1, MPI_DOUBLE, MPI_COMM_WORLD);
+                    final[0][i] += temp;
+                }
+                for(int i=0; i<side_len; i++){
+                    MPI_Unpack(right_recv, side_len*8, &position, &temp, 1, MPI_DOUBLE, MPI_COMM_WORLD);
+                    final[0][i] += temp;
+                    final[1][i] += temp;
+                }
+                MPI_Send(data[0], 2*side_len, MPI_DOUBLE, my_rank-Px, my_rank-Px, MPI_COMM_WORLD);
+            }
+            if(col_rank%2!=0 && col_rank<Py-1){  // Down send/recv
+                MPI_Send(data[side_len-2], 2*side_len, MPI_DOUBLE, my_rank+Px, my_rank+Px, MPI_COMM_WORLD);
+                MPI_Recv(down_recv, 2*side_len, MPI_DOUBLE, my_rank+Px, my_rank, MPI_COMM_WORLD, &status);
+                position = 0;
+                double temp;
+                for(int i=0; i<side_len; i++){
+                    MPI_Unpack(right_recv, side_len*8, &position, &temp, 1, MPI_DOUBLE, MPI_COMM_WORLD);
+                    final[side_len-1][i] += temp;
+                    final[side_len-2][i] += temp;
+                }
+                for(int i=0; i<side_len; i++){
+                    MPI_Unpack(right_recv, side_len*8, &position, &temp, 1, MPI_DOUBLE, MPI_COMM_WORLD);
+                    final[side_len-1][i] += temp;
+                }
+            }
+            else if(col_rank%2==0 && col_rank>0){  // Up send/recv
+                MPI_Recv(up_recv, 2*side_len, MPI_DOUBLE, my_rank-Px, my_rank, MPI_COMM_WORLD, &status);
+                position = 0;
+                double temp;
+                for(int i=0; i<side_len; i++){
+                    MPI_Unpack(right_recv, side_len*8, &position, &temp, 1, MPI_DOUBLE, MPI_COMM_WORLD);
+                    final[0][i] += temp;
+                }
+                for(int i=0; i<side_len; i++){
+                    MPI_Unpack(right_recv, side_len*8, &position, &temp, 1, MPI_DOUBLE, MPI_COMM_WORLD);
+                    final[0][i] += temp;
+                    final[1][i] += temp;
+                }
+                MPI_Send(data[0], 2*side_len, MPI_DOUBLE, my_rank-Px, my_rank-Px, MPI_COMM_WORLD);
+            }
+
+            temp = data;
+            data = final;
+            final = temp;
+
+        }
+
+        double etime = MPI_Wtime();
+        double time = etime - stime;
+        double max_time;
+        MPI_Reduce(&time, &max_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+        if(my_rank==0){
+            printf("Max time: %lf\n", max_time);
+        }
 
     }
     
