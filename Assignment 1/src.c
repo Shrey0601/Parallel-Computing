@@ -130,33 +130,51 @@ int main(int argc, char* argv[]){
                         MPI_Pack(&data[i][0], 1, MPI_DOUBLE, left_send, side_len*8, &position, MPI_COMM_WORLD);
                         MPI_Pack(&data[i][side_len-1], 1, MPI_DOUBLE, right_send, side_len*8, &position, MPI_COMM_WORLD);
                     }
-                    // Send using NN-2 first for all rows, then for all columns
-
-                    // Inter-Rows NN-2
-                    if(my_rank%2==0 && (my_rank+1)%Px!=0){
-                        MPI_Send(right_send, side_len, MPI_DOUBLE, my_rank+1, my_rank+1, MPI_COMM_WORLD);
-                        MPI_Recv(right_recv, side_len, MPI_DOUBLE, my_rank+1, my_rank, MPI_COMM_WORLD, &status);
-                    }
-                    else if(my_rank%2!=0 && my_rank%Px!=0){
-                        MPI_Recv(left_recv, side_len, MPI_DOUBLE, my_rank-1, my_rank, MPI_COMM_WORLD, &status);
-                        MPI_Send(left_send, side_len, MPI_DOUBLE, my_rank-1, my_rank-1, MPI_COMM_WORLD);
-                    }
-
-                    if(my_rank%2!=0 && (my_rank+1)%Px!=0){
-                        MPI_Send(right_send, side_len, MPI_DOUBLE, my_rank+1, my_rank+1, MPI_COMM_WORLD);
-                        MPI_Recv(right_recv, side_len, MPI_DOUBLE, my_rank+1, my_rank, MPI_COMM_WORLD, &status);
-                    }
-                    else if(my_rank%2==0 && my_rank%Px!=0){
-                        MPI_Recv(left_recv, side_len, MPI_DOUBLE, my_rank-1, my_rank, MPI_COMM_WORLD, &status);
-                        MPI_Send(left_send, side_len, MPI_DOUBLE, my_rank-1, my_rank-1, MPI_COMM_WORLD);
-                    }
-
-                    // Inter-Columns NN-2
-                    
-
 
                 }
             }
+
+            // Send using NN-2 first for all rows, then for all columns
+
+            // Inter-Rows NN-2
+            if(my_rank%2==0 && (my_rank+1)%Px!=0){  // Right send/recv
+                MPI_Send(right_send, side_len, MPI_DOUBLE, my_rank+1, my_rank+1, MPI_COMM_WORLD);
+                MPI_Recv(right_recv, side_len, MPI_DOUBLE, my_rank+1, my_rank, MPI_COMM_WORLD, &status);
+            }
+            else if(my_rank%2!=0 && my_rank%Px!=0){  // Left send/recv
+                MPI_Recv(left_recv, side_len, MPI_DOUBLE, my_rank-1, my_rank, MPI_COMM_WORLD, &status);
+                MPI_Send(left_send, side_len, MPI_DOUBLE, my_rank-1, my_rank-1, MPI_COMM_WORLD);
+            }
+
+            if(my_rank%2!=0 && (my_rank+1)%Px!=0){  // Right send/recv
+                MPI_Send(right_send, side_len, MPI_DOUBLE, my_rank+1, my_rank+1, MPI_COMM_WORLD);
+                MPI_Recv(right_recv, side_len, MPI_DOUBLE, my_rank+1, my_rank, MPI_COMM_WORLD, &status);
+            }
+            else if(my_rank%2==0 && my_rank%Px!=0){  // Left send/recv
+                MPI_Recv(left_recv, side_len, MPI_DOUBLE, my_rank-1, my_rank, MPI_COMM_WORLD, &status);
+                MPI_Send(left_send, side_len, MPI_DOUBLE, my_rank-1, my_rank-1, MPI_COMM_WORLD);
+            }
+
+            // Inter-Columns NN-2
+            int col_rank = my_rank/Px;
+            if(col_rank%2==0 && col_rank<Py-1){  // Down send/recv
+                MPI_Send(data[side_len-1], side_len, MPI_DOUBLE, my_rank+Px, my_rank+Px, MPI_COMM_WORLD);
+                MPI_Recv(down_recv, side_len, MPI_DOUBLE, my_rank+Px, my_rank, MPI_COMM_WORLD, &status);
+            }
+            else if(col_rank%2!=0 && col_rank>0){  // Up send/recv
+                MPI_Recv(up_recv, side_len, MPI_DOUBLE, my_rank-Px, my_rank, MPI_COMM_WORLD, &status);
+                MPI_Send(data[0], side_len, MPI_DOUBLE, my_rank-Px, my_rank-Px, MPI_COMM_WORLD);
+            }
+            if(col_rank%2!=0 && col_rank<Py-1){  // Down send/recv
+                MPI_Send(data[side_len-1], side_len, MPI_DOUBLE, my_rank+Px, my_rank+Px, MPI_COMM_WORLD);
+                MPI_Recv(down_recv, side_len, MPI_DOUBLE, my_rank+Px, my_rank, MPI_COMM_WORLD, &status);
+            }
+            else if(col_rank%2==0 && col_rank>0){  // Up send/recv
+                MPI_Recv(up_recv, side_len, MPI_DOUBLE, my_rank-Px, my_rank, MPI_COMM_WORLD, &status);
+                MPI_Send(data[0], side_len, MPI_DOUBLE, my_rank-Px, my_rank-Px, MPI_COMM_WORLD);
+            }
+
+            
 
         }
     
