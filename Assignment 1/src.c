@@ -36,7 +36,6 @@ int main(int argc, char* argv[]){
         final[i] = (double*)malloc(side_len*sizeof(double));
         for(int j=0; j<side_len; j++){
             data[i][j]= abs(rand()+(i*rand()+j*my_rank))/100;
-            data[i][j] = 1;
         }
     }
 
@@ -397,6 +396,5 @@ int main(int argc, char* argv[]){
             printf("Max time: %lf\n", max_time);
         }
     }    
-    // printf("Complete\n");
     MPI_Finalize();
 }
