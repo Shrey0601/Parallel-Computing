@@ -317,13 +317,13 @@ int main(int argc, char* argv[]){
                     final[side_len-2][i] += down_recv[i];
                 }
                 for(int i=0; i<side_len; i++){
-                    final[side_len-1][i] += down_recv[i];
+                    final[side_len-1][i] += down_recv[side_len + i];
                 }
             }
             else if(col_rank%2!=0 && col_rank>0){  // Up send/recv
                 MPI_Recv(up_recv, 2*side_len, MPI_DOUBLE, my_rank-Px, my_rank, MPI_COMM_WORLD, &status);
                 for(int i=0; i<side_len; i++){
-                    final[0][i] += up_recv[i];
+                    final[0][i] += up_recv[side_len + i];
                 }
                 for(int i=0; i<side_len; i++){
                     final[0][i] += up_recv[i];
@@ -339,13 +339,13 @@ int main(int argc, char* argv[]){
                     final[side_len-2][i] += down_recv[i];
                 }
                 for(int i=0; i<side_len; i++){
-                    final[side_len-1][i] += down_recv[i];
+                    final[side_len-1][i] += down_recv[side_len + i];
                 }
             }
             else if(col_rank%2==0 && col_rank>0){  // Up send/recv
                 MPI_Recv(up_recv, 2*side_len, MPI_DOUBLE, my_rank-Px, my_rank, MPI_COMM_WORLD, &status);
                 for(int i=0; i<side_len; i++){
-                    final[0][i] += up_recv[i];
+                    final[0][i] += up_recv[side_len + i];
                 }
                 for(int i=0; i<side_len; i++){
                     final[0][i] += up_recv[i];
