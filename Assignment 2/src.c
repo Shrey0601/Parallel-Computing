@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
 
     MPI_Comm newcomm;
     int color = my_rank / Px;
-    MPI_Comm_split (MPI_COMM_WORLD, color, myrank, &newcomm);
+    MPI_Comm_split (MPI_COMM_WORLD, color, my_rank, &newcomm);
 
     int data_points = atoi(argv[2]);
     int side_len = sqrt(data_points);
