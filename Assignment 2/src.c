@@ -3,9 +3,9 @@
 #include <stdlib.h>
 #include <math.h>
 
-// #pragma prutor-mpi-args: -np 12 -ppn 6
+#pragma prutor-mpi-args: -np 12 -ppn 4
 
-// #pragma prutor-mpi-sysargs: 4 4194304 10 7 5
+#pragma prutor-mpi-sysargs: 4 4 1 7 
 
 int main(int argc, char *argv[])
 {
@@ -41,7 +41,8 @@ int main(int argc, char *argv[])
         final[i] = (double *)malloc(side_len * sizeof(double));
         for (int j = 0; j < side_len; j++)
         {
-            data[i][j] = abs(rand() + (i * rand() + j * my_rank)) / 100;
+            // data[i][j] = abs(rand() + (i * rand() + j * my_rank)) / 100;
+            data[i][j] = 1;
         }
     }
 
@@ -204,7 +205,7 @@ int main(int argc, char *argv[])
         2) Send with the current rank as tag */
         
         position = 0;
-        for (int i = 0; i < side_len; i++)
+        for (int i = 0; i < side_len; i++)    // Pack the 4 rows in intra_node_left_send buffer 
         {
             MPI_Pack(&data[0][i], 1, MPI_DOUBLE, intra_node_left_send, side_len * 8, &position, MPI_COMM_WORLD);
         }
@@ -220,7 +221,7 @@ int main(int argc, char *argv[])
         {
             MPI_Pack(&data[side_len-1][i], 1, MPI_DOUBLE, intra_node_left_send, side_len * 8, &position, MPI_COMM_WORLD);
         }
-        MPI_Gather(intra_node_left_send, 4 * side_len, MPI_DOUBLE, intra_node_left_recv, 4 * side_len, MPI_DOUBLE, my_rank / Px, newcomm);
+        MPI_Gather(intra_node_left_send, 4 * side_len, MPI_DOUBLE, intra_node_left_recv, 4 * side_len, MPI_DOUBLE, 0, newcomm);  // Gathers the 4 rows in the intra_node_left_recv buffer of the first column process
 
         // Send the intra_node_left_recv buffer to upper and lower rank processes
         // if(my_rank % Px == 0) {
@@ -257,20 +258,23 @@ int main(int argc, char *argv[])
                 MPI_Send(intra_node_left_recv, 4 * Px * side_len, MPI_DOUBLE, my_rank - Px, my_rank - Px, MPI_COMM_WORLD);
             }
         }
-        MPI_Scatter(inter_node_up_recv, 4 * side_len, MPI_DOUBLE, up_recv, 4 * side_len, MPI_DOUBLE, my_rank / Px, newcomm);
-        MPI_Scatter(inter_node_down_recv, 4 * side_len, MPI_DOUBLE, down_recv, 4 * side_len, MPI_DOUBLE, my_rank / Px, newcomm);
-
-        for (int i = 0; i < side_len; i++)
-        {
-            final[0][i] += up_recv[2 * side_len + i];
-            final[0][i] += up_recv[3 * side_len + i];
-            final[1][i] += up_recv[3 * side_len + i];
+        MPI_Scatter(inter_node_up_recv, 4 * side_len, MPI_DOUBLE, up_recv, 4 * side_len, MPI_DOUBLE, 0, newcomm);
+        MPI_Scatter(inter_node_down_recv, 4 * side_len, MPI_DOUBLE, down_recv, 4 * side_len, MPI_DOUBLE, 0, newcomm);
+        if(my_rank / Px != 0){
+            for (int i = 0; i < side_len; i++)
+            {
+                final[0][i] += up_recv[2 * side_len + i];
+                final[0][i] += up_recv[3 * side_len + i];
+                final[1][i] += up_recv[3 * side_len + i];
+            }
         }
-        for (int i = 0; i < side_len; i++)
-        {
-            final[side_len - 1][i] += down_recv[i];
-            final[side_len - 1][i] += down_recv[side_len + i];
-            final[side_len - 2][i] += down_recv[i];
+        if(my_rank / Px != Py - 1){
+            for (int i = 0; i < side_len; i++)
+            {
+                final[side_len - 1][i] += down_recv[i];
+                final[side_len - 1][i] += down_recv[side_len + i];
+                final[side_len - 2][i] += down_recv[i];
+            }
         }
 
         int Pi = my_rank / 4, Pj = my_rank % 4;
@@ -309,6 +313,7 @@ int main(int argc, char *argv[])
                 }
                 final[i][j] /= denom;
                 data[i][j] = final[i][j];
+                printf("%lf ", data[i][j]);
             }
         }
     }
