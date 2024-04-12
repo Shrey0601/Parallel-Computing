@@ -46,11 +46,11 @@ int main(int argc, char *argv[])
         }
     }
 
-    double inter_node_up_recv[4 * Px * side_len], inter_node_down_recv[4 * Px * side_len], left_recv[2 * side_len], right_recv[2 * side_len]; // Received from up, down, left, right
+    double inter_node_up_recv[2 * Px * side_len], inter_node_down_recv[2 * Px * side_len], left_recv[2 * side_len], right_recv[2 * side_len]; // Received from up, down, left, right
     double left_send[2 * side_len], right_send[2 * side_len];                                                 // Sent to up, down, left, right
-    double intra_node_left_send[4 * side_len];
-    double intra_node_left_recv[4 * Px * side_len];
-    double up_recv[2 * side_len], down_recv[2 * side_len];
+    double intra_node_left_send_down[2 * side_len], intra_node_left_send_up[2 * side_len];
+    double intra_node_left_recv_down[2 * Px * side_len], intra_node_left_recv_up[2 * Px * side_len];
+    double up_recv[2 * side_len], down_recv[2 * side_len]; // TODO : shouldnt size be 4 * side_len??
 
     int num_elements = side_len; // Number of elements to pack
 
@@ -207,21 +207,23 @@ int main(int argc, char *argv[])
         position = 0;
         for (int i = 0; i < side_len; i++)    // Pack the 4 rows in intra_node_left_send buffer 
         {
-            MPI_Pack(&data[0][i], 1, MPI_DOUBLE, intra_node_left_send, side_len * 8, &position, MPI_COMM_WORLD);
+            MPI_Pack(&data[0][i], 1, MPI_DOUBLE, intra_node_left_send_up, side_len * 8, &position, MPI_COMM_WORLD);
         }
         for (int i = 0; i < side_len; i++)
         {
-            MPI_Pack(&data[1][i], 1, MPI_DOUBLE, intra_node_left_send, side_len * 8, &position, MPI_COMM_WORLD);
+            MPI_Pack(&data[1][i], 1, MPI_DOUBLE, intra_node_left_send_up, side_len * 8, &position, MPI_COMM_WORLD);
+        }
+        position = 0;
+        for (int i = 0; i < side_len; i++)
+        {
+            MPI_Pack(&data[side_len-2][i], 1, MPI_DOUBLE, intra_node_left_send_down, side_len * 8, &position, MPI_COMM_WORLD);
         }
         for (int i = 0; i < side_len; i++)
         {
-            MPI_Pack(&data[side_len-2][i], 1, MPI_DOUBLE, intra_node_left_send, side_len * 8, &position, MPI_COMM_WORLD);
+            MPI_Pack(&data[side_len-1][i], 1, MPI_DOUBLE, intra_node_left_send_down, side_len * 8, &position, MPI_COMM_WORLD);
         }
-        for (int i = 0; i < side_len; i++)
-        {
-            MPI_Pack(&data[side_len-1][i], 1, MPI_DOUBLE, intra_node_left_send, side_len * 8, &position, MPI_COMM_WORLD);
-        }
-        MPI_Gather(intra_node_left_send, 4 * side_len, MPI_DOUBLE, intra_node_left_recv, 4 * side_len, MPI_DOUBLE, 0, newcomm);  // Gathers the 4 rows in the intra_node_left_recv buffer of the first column process
+        MPI_Gather(intra_node_left_send_up, 2 * side_len, MPI_DOUBLE, intra_node_left_recv_up, 2 * side_len, MPI_DOUBLE, 0, newcomm);  // Gathers the 4 rows in the intra_node_left_recv buffer of the first column process
+        MPI_Gather(intra_node_left_send_down, 2 * side_len, MPI_DOUBLE, intra_node_left_recv_down, 2 * side_len, MPI_DOUBLE, 0, newcomm);  // Gathers the 4 rows in the intra_node_left_recv buffer of the first column process
 
         // Send the intra_node_left_recv buffer to upper and lower rank processes
         // if(my_rank % Px == 0) {
@@ -239,33 +241,33 @@ int main(int argc, char *argv[])
             int col_rank = my_rank / Px;
             if (col_rank % 2 == 0 && col_rank < Py - 1)
             { // Down send/recv
-                MPI_Send(intra_node_left_recv, 4 * Px * side_len, MPI_DOUBLE, my_rank + Px, my_rank + Px, MPI_COMM_WORLD);
-                MPI_Recv(inter_node_down_recv, 4 * Px * side_len, MPI_DOUBLE, my_rank + Px, my_rank, MPI_COMM_WORLD, &status);
+                MPI_Send(intra_node_left_recv_down, 2 * Px * side_len, MPI_DOUBLE, my_rank + Px, my_rank + Px, MPI_COMM_WORLD);
+                MPI_Recv(inter_node_down_recv, 2 * Px * side_len, MPI_DOUBLE, my_rank + Px, my_rank, MPI_COMM_WORLD, &status);
             }
             else if (col_rank % 2 != 0 && col_rank > 0)
             { // Up send/recv
-                MPI_Recv(inter_node_up_recv, 4 * Px * side_len, MPI_DOUBLE, my_rank - Px, my_rank, MPI_COMM_WORLD, &status);
-                MPI_Send(intra_node_left_recv, 4 * Px * side_len, MPI_DOUBLE, my_rank - Px, my_rank - Px, MPI_COMM_WORLD);
+                MPI_Recv(inter_node_up_recv, 2 * Px * side_len, MPI_DOUBLE, my_rank - Px, my_rank, MPI_COMM_WORLD, &status);
+                MPI_Send(intra_node_left_recv_up, 2 * Px * side_len, MPI_DOUBLE, my_rank - Px, my_rank - Px, MPI_COMM_WORLD);
             }
             if (col_rank % 2 != 0 && col_rank < Py - 1)
             { // Down send/recv
-                MPI_Send(intra_node_left_recv,4 * Px * side_len, MPI_DOUBLE, my_rank + Px, my_rank + Px, MPI_COMM_WORLD);
-                MPI_Recv(inter_node_down_recv, 4 * Px * side_len, MPI_DOUBLE, my_rank + Px, my_rank, MPI_COMM_WORLD, &status);
+                MPI_Send(intra_node_left_recv_down,2 * Px * side_len, MPI_DOUBLE, my_rank + Px, my_rank + Px, MPI_COMM_WORLD);
+                MPI_Recv(inter_node_down_recv, 2 * Px * side_len, MPI_DOUBLE, my_rank + Px, my_rank, MPI_COMM_WORLD, &status);
             }
             else if (col_rank % 2 == 0 && col_rank > 0)
             { // Up send/recv
-                MPI_Recv(inter_node_up_recv, 4 * Px * side_len, MPI_DOUBLE, my_rank - Px, my_rank, MPI_COMM_WORLD, &status);
-                MPI_Send(intra_node_left_recv, 4 * Px * side_len, MPI_DOUBLE, my_rank - Px, my_rank - Px, MPI_COMM_WORLD);
+                MPI_Recv(inter_node_up_recv, 2 * Px * side_len, MPI_DOUBLE, my_rank - Px, my_rank, MPI_COMM_WORLD, &status);
+                MPI_Send(intra_node_left_recv_up, 2 * Px * side_len, MPI_DOUBLE, my_rank - Px, my_rank - Px, MPI_COMM_WORLD);
             }
         }
-        MPI_Scatter(inter_node_up_recv, 4 * side_len, MPI_DOUBLE, up_recv, 4 * side_len, MPI_DOUBLE, 0, newcomm);
-        MPI_Scatter(inter_node_down_recv, 4 * side_len, MPI_DOUBLE, down_recv, 4 * side_len, MPI_DOUBLE, 0, newcomm);
+        MPI_Scatter(inter_node_up_recv, 2 * side_len, MPI_DOUBLE, up_recv, 2 * side_len, MPI_DOUBLE, 0, newcomm);
+        MPI_Scatter(inter_node_down_recv, 2 * side_len, MPI_DOUBLE, down_recv, 2 * side_len, MPI_DOUBLE, 0, newcomm);
         if(my_rank / Px != 0){
             for (int i = 0; i < side_len; i++)
             {
-                final[0][i] += up_recv[2 * side_len + i];
-                final[0][i] += up_recv[3 * side_len + i];
-                final[1][i] += up_recv[3 * side_len + i];
+                final[0][i] += up_recv[i];
+                final[0][i] += up_recv[side_len + i];
+                final[1][i] += up_recv[side_len + i];
             }
         }
         if(my_rank / Px != Py - 1){
@@ -313,7 +315,7 @@ int main(int argc, char *argv[])
                 }
                 final[i][j] /= denom;
                 data[i][j] = final[i][j];
-                printf("%lf ", data[i][j]);
+                // printf("%lf ", data[i][j]);
             }
         }
     }
