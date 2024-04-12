@@ -16,9 +16,14 @@ int main(int argc, char *argv[])
     int my_rank, size;
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
+
     int Px, Py;
     Px = atoi(argv[1]);
     Py = size / Px;
+
+    MPI_Comm newcomm;
+    int color = my_rank / Px;
+    MPI_Comm_split (MPI_COMM_WORLD, color, myrank, &newcomm);
 
     int data_points = atoi(argv[2]);
     int side_len = sqrt(data_points);
@@ -215,7 +220,7 @@ int main(int argc, char *argv[])
         {
             MPI_Pack(&data[side_len-1][i], 1, MPI_DOUBLE, intra_node_left_send, side_len * 8, &position, MPI_COMM_WORLD);
         }
-        MPI_Gather(intra_node_left_send, 4 * side_len, MPI_DOUBLE, intra_node_left_recv, 4 * side_len, MPI_DOUBLE, my_rank / Px, MPI_COMM_WORLD);
+        MPI_Gather(intra_node_left_send, 4 * side_len, MPI_DOUBLE, intra_node_left_recv, 4 * side_len, MPI_DOUBLE, my_rank / Px, newcomm);
 
         // Send the intra_node_left_recv buffer to upper and lower rank processes
         // if(my_rank % Px == 0) {
@@ -252,8 +257,8 @@ int main(int argc, char *argv[])
                 MPI_Send(intra_node_left_recv, 4 * Px * side_len, MPI_DOUBLE, my_rank - Px, my_rank - Px, MPI_COMM_WORLD);
             }
         }
-        MPI_Scatter(inter_node_up_recv, 4 * side_len, MPI_DOUBLE, up_recv, 4 * side_len, MPI_DOUBLE, my_rank / Px, MPI_COMM_WORLD);
-        MPI_Scatter(inter_node_down_recv, 4 * side_len, MPI_DOUBLE, down_recv, 4 * side_len, MPI_DOUBLE, my_rank / Px, MPI_COMM_WORLD);
+        MPI_Scatter(inter_node_up_recv, 4 * side_len, MPI_DOUBLE, up_recv, 4 * side_len, MPI_DOUBLE, my_rank / Px, newcomm);
+        MPI_Scatter(inter_node_down_recv, 4 * side_len, MPI_DOUBLE, down_recv, 4 * side_len, MPI_DOUBLE, my_rank / Px, newcomm);
 
         for (int i = 0; i < side_len; i++)
         {
