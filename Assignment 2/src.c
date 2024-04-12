@@ -3,9 +3,9 @@
 #include <stdlib.h>
 #include <math.h>
 
-#pragma prutor-mpi-args: -np 12 -ppn 4
+// #pragma prutor-mpi-args: -np 12 -ppn 4
 
-#pragma prutor-mpi-sysargs: 4 4 1 7 
+// #pragma prutor-mpi-sysargs: 4 4 1 7 
 
 int main(int argc, char *argv[])
 {
@@ -277,7 +277,7 @@ int main(int argc, char *argv[])
             }
         }
 
-        int Pi = my_rank / 4, Pj = my_rank % 4;
+        int Pi = my_rank / Px, Pj = my_rank % Px;
         for (int i = 0; i < side_len; ++i)
         {
             for (int j = 0; j < side_len; ++j)
