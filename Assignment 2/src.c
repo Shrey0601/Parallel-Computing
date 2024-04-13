@@ -41,8 +41,8 @@ int main(int argc, char *argv[])
         final[i] = (double *)malloc(side_len * sizeof(double));
         for (int j = 0; j < side_len; j++)
         {
-            // data[i][j] = abs(rand() + (i * rand() + j * my_rank)) / 100;
-            data[i][j] = 1;
+            data[i][j] = abs(rand() + (i * rand() + j * my_rank)) / 100;
+            // data[i][j] = 1;
         }
     }
 
@@ -204,26 +204,26 @@ int main(int argc, char *argv[])
         1) Pack the rows
         2) Send with the current rank as tag */
         
-        position = 0;
-        for (int i = 0; i < side_len; i++)    // Pack the 4 rows in intra_node_left_send buffer 
-        {
-            MPI_Pack(&data[0][i], 1, MPI_DOUBLE, intra_node_left_send_up, side_len * 8, &position, MPI_COMM_WORLD);
-        }
-        for (int i = 0; i < side_len; i++)
-        {
-            MPI_Pack(&data[1][i], 1, MPI_DOUBLE, intra_node_left_send_up, side_len * 8, &position, MPI_COMM_WORLD);
-        }
-        position = 0;
-        for (int i = 0; i < side_len; i++)
-        {
-            MPI_Pack(&data[side_len-2][i], 1, MPI_DOUBLE, intra_node_left_send_down, side_len * 8, &position, MPI_COMM_WORLD);
-        }
-        for (int i = 0; i < side_len; i++)
-        {
-            MPI_Pack(&data[side_len-1][i], 1, MPI_DOUBLE, intra_node_left_send_down, side_len * 8, &position, MPI_COMM_WORLD);
-        }
-        MPI_Gather(intra_node_left_send_up, 2 * side_len, MPI_DOUBLE, intra_node_left_recv_up, 2 * side_len, MPI_DOUBLE, 0, newcomm);  // Gathers the 4 rows in the intra_node_left_recv buffer of the first column process
-        MPI_Gather(intra_node_left_send_down, 2 * side_len, MPI_DOUBLE, intra_node_left_recv_down, 2 * side_len, MPI_DOUBLE, 0, newcomm);  // Gathers the 4 rows in the intra_node_left_recv buffer of the first column process
+        // position = 0;
+        // for (int i = 0; i < side_len; i++)    // Pack the 4 rows in intra_node_left_send buffer 
+        // {
+        //     MPI_Pack(&data[0][i], 1, MPI_DOUBLE, intra_node_left_send_up, side_len * 8, &position, MPI_COMM_WORLD);
+        // }
+        // for (int i = 0; i < side_len; i++)
+        // {
+        //     MPI_Pack(&data[1][i], 1, MPI_DOUBLE, intra_node_left_send_up, side_len * 8, &position, MPI_COMM_WORLD);
+        // }
+        // position = 0;
+        // for (int i = 0; i < side_len; i++)
+        // {
+        //     MPI_Pack(&data[side_len-2][i], 1, MPI_DOUBLE, intra_node_left_send_down, side_len * 8, &position, MPI_COMM_WORLD);
+        // }
+        // for (int i = 0; i < side_len; i++)
+        // {
+        //     MPI_Pack(&data[side_len-1][i], 1, MPI_DOUBLE, intra_node_left_send_down, side_len * 8, &position, MPI_COMM_WORLD);
+        // }
+        MPI_Gather(&data[0][0], 2 * side_len, MPI_DOUBLE, intra_node_left_recv_up, 2 * side_len, MPI_DOUBLE, 0, newcomm);  // Gathers the 4 rows in the intra_node_left_recv buffer of the first column process
+        MPI_Gather(&data[side_len-2][0], 2 * side_len, MPI_DOUBLE, intra_node_left_recv_down, 2 * side_len, MPI_DOUBLE, 0, newcomm);  // Gathers the 4 rows in the intra_node_left_recv buffer of the first column process
 
         // Send the intra_node_left_recv buffer to upper and lower rank processes
         // if(my_rank % Px == 0) {
@@ -326,7 +326,7 @@ int main(int argc, char *argv[])
     MPI_Reduce(&time, &max_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (my_rank == 0)
     {
-        printf("%lf\n", max_time);
+        printf("%lf %lf\n", max_time, data[0][0]);
     }
     MPI_Finalize();
 }
