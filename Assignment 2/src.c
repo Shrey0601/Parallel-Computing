@@ -516,7 +516,9 @@ int main(int argc, char *argv[])
             printf("TIme without leader = %lf\n", max_time);
         }
     }
-    printf("Data = %lf\n", data[0][0]);
-
+    if(my_rank == 0) {
+        printf("Data = %lf\n", data[0][0]);
+    }
+    
     MPI_Finalize();
 }
