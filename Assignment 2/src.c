@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
         final[i] = (double *)malloc(side_len * sizeof(double));
         for (int j = 0; j < side_len; j++)
         {
-            data[i][j] = abs(rand() + (i * rand() + j * my_rank)) / 100;
+            data[i][j] = abs(rand() + (i * rand() + j * my_rank));
             data_without_leader[i][j] = data[i][j];
         }
     }
