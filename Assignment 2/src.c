@@ -110,20 +110,20 @@ int main(int argc, char *argv[])
             position = 0;
             for (int i = 0; i < side_len; i++)
             {
-                MPI_Pack(&data[i][0], 1, MPI_DOUBLE, left_send, side_len * 8, &position, MPI_COMM_WORLD);
+                MPI_Pack(&data[i][0], 1, MPI_DOUBLE, left_send, 2 * side_len * 8, &position, MPI_COMM_WORLD);
             }
             for (int i = 0; i < side_len; i++)
             {
-                MPI_Pack(&data[i][1], 1, MPI_DOUBLE, left_send, side_len * 8, &position, MPI_COMM_WORLD);
+                MPI_Pack(&data[i][1], 1, MPI_DOUBLE, left_send, 2 * side_len * 8, &position, MPI_COMM_WORLD);
             }
             position = 0;
             for (int i = 0; i < side_len; i++)
             {
-                MPI_Pack(&data[i][side_len - 1], 1, MPI_DOUBLE, right_send, side_len * 8, &position, MPI_COMM_WORLD);
+                MPI_Pack(&data[i][side_len - 1], 1, MPI_DOUBLE, right_send, 2 * side_len * 8, &position, MPI_COMM_WORLD);
             }
             for (int i = 0; i < side_len; i++)
             {
-                MPI_Pack(&data[i][side_len - 2], 1, MPI_DOUBLE, right_send, side_len * 8, &position, MPI_COMM_WORLD);
+                MPI_Pack(&data[i][side_len - 2], 1, MPI_DOUBLE, right_send, 2 * side_len * 8, &position, MPI_COMM_WORLD);
             }
 
             // Send using NN-2 first for all rows, then for all columns
@@ -348,17 +348,17 @@ int main(int argc, char *argv[])
             int position;
             position = 0;
             for(int i = 0; i < side_len; i++){
-                    MPI_Pack(&data_without_leader[i][0], 1, MPI_DOUBLE, left_send, side_len*8, &position, MPI_COMM_WORLD);
+                    MPI_Pack(&data_without_leader[i][0], 1, MPI_DOUBLE, left_send, 2 * side_len*8, &position, MPI_COMM_WORLD);
             }
             for(int i = 0; i < side_len; i++){
-                    MPI_Pack(&data_without_leader[i][1], 1, MPI_DOUBLE, left_send, side_len*8, &position, MPI_COMM_WORLD);
+                    MPI_Pack(&data_without_leader[i][1], 1, MPI_DOUBLE, left_send, 2* side_len*8, &position, MPI_COMM_WORLD);
             }
             position = 0;
             for(int i = 0; i < side_len; i++){
-                    MPI_Pack(&data_without_leader[i][side_len-1], 1, MPI_DOUBLE, right_send, side_len*8, &position, MPI_COMM_WORLD);
+                    MPI_Pack(&data_without_leader[i][side_len-1], 1, MPI_DOUBLE, right_send, 2*side_len*8, &position, MPI_COMM_WORLD);
             }
             for(int i = 0; i < side_len; i++){
-                    MPI_Pack(&data_without_leader[i][side_len-2], 1, MPI_DOUBLE, right_send, side_len*8, &position, MPI_COMM_WORLD);
+                    MPI_Pack(&data_without_leader[i][side_len-2], 1, MPI_DOUBLE, right_send, 2*side_len*8, &position, MPI_COMM_WORLD);
             }
 
             // Send using NN-2 first for all rows, then for all columns
